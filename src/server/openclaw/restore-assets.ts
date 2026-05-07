@@ -37,6 +37,8 @@ import {
   OPENCLAW_BUILTIN_IMAGE_GEN_SCRIPT_PATH,
   OPENCLAW_BUILTIN_IMAGE_GEN_SKILL_PATH,
   OPENCLAW_CONFIG_PATH,
+  OPENCLAW_AGENT_SYSTEM_PROMPT_PATH,
+  getAgentSystemPrompt,
   OPENCLAW_DIAG_SCRIPT_PATH,
   OPENCLAW_FAST_RESTORE_SCRIPT_PATH,
   OPENCLAW_FORCE_PAIR_SCRIPT_PATH,
@@ -89,7 +91,7 @@ export function buildWorkerSandboxRestoreFiles(): { path: string; content: Buffe
 }
 
 export function buildStaticRestoreFiles(): { path: string; content: Buffer }[] {
-  return [
+  const files: { path: string; content: Buffer }[] = [
     { path: OPENCLAW_FORCE_PAIR_SCRIPT_PATH, content: Buffer.from(buildForcePairScript()) },
     { path: OPENCLAW_STARTUP_SCRIPT_PATH, content: Buffer.from(buildStartupScript()) },
     { path: OPENCLAW_FAST_RESTORE_SCRIPT_PATH, content: Buffer.from(buildFastRestoreScript()) },
@@ -134,6 +136,16 @@ export function buildStaticRestoreFiles(): { path: string; content: Buffer }[] {
     { path: OPENCLAW_COMPARE_SCRIPT_PATH, content: Buffer.from(buildCompareScript()) },
     ...buildWorkerSandboxRestoreFiles(),
   ];
+
+  const systemPrompt = getAgentSystemPrompt();
+  if (systemPrompt) {
+    files.push({
+      path: OPENCLAW_AGENT_SYSTEM_PROMPT_PATH,
+      content: Buffer.from(systemPrompt),
+    });
+  }
+
+  return files;
 }
 
 export function buildDynamicRestoreFiles(options: {

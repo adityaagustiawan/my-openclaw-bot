@@ -71,7 +71,12 @@ export const OPENCLAW_REASONING_SKILL_PATH = `${OPENCLAW_STATE_DIR}/skills/reaso
 export const OPENCLAW_REASONING_SCRIPT_PATH = `${OPENCLAW_STATE_DIR}/skills/reasoning/scripts/reason.mjs`;
 export const OPENCLAW_COMPARE_SKILL_PATH = `${OPENCLAW_STATE_DIR}/skills/compare-models/SKILL.md`;
 export const OPENCLAW_COMPARE_SCRIPT_PATH = `${OPENCLAW_STATE_DIR}/skills/compare-models/scripts/compare.mjs`;
+export const OPENCLAW_AGENT_SYSTEM_PROMPT_PATH = `${OPENCLAW_STATE_DIR}/agents/main/system.md`;
 export const OPENCLAW_WORKER_SANDBOX_SKILL_PATH = `${OPENCLAW_STATE_DIR}/skills/worker-sandbox/SKILL.md`;
+
+export function getAgentSystemPrompt(): string | undefined {
+  return process.env.OPENCLAW_AGENT_SYSTEM_PROMPT?.trim() || undefined;
+}
 export const OPENCLAW_WORKER_SANDBOX_SCRIPT_PATH = `${OPENCLAW_STATE_DIR}/skills/worker-sandbox/scripts/execute.mjs`;
 export const OPENCLAW_WORKER_SANDBOX_BATCH_SKILL_PATH = `${OPENCLAW_STATE_DIR}/skills/worker-sandbox-batch/SKILL.md`;
 export const OPENCLAW_WORKER_SANDBOX_BATCH_SCRIPT_PATH = `${OPENCLAW_STATE_DIR}/skills/worker-sandbox-batch/scripts/execute-batch.mjs`;
@@ -567,10 +572,15 @@ export function buildGatewayConfig(
     },
   };
 
+  const localModelUrl = process.env.LOCAL_MODEL_URL?.trim();
+  const localModelId = process.env.LOCAL_MODEL_ID?.trim() || "phi3";
+
   config.agents = {
     defaults: {
       model: {
-        primary: "vercel-ai-gateway/anthropic/claude-sonnet-4.6",
+        primary: localModelUrl 
+          ? `local-provider/${localModelId}` 
+          : "vercel-ai-gateway/anthropic/claude-sonnet-4.6",
         fallbacks: [
           "vercel-ai-gateway/openai/gpt-5.3-chat",
           "vercel-ai-gateway/anthropic/claude-haiku-4.5",
@@ -579,6 +589,8 @@ export function buildGatewayConfig(
         ],
       },
       models: {
+        // Local Provider
+        [`local-provider/${localModelId}`]: { alias: "Phi-3 Local" },
         // Anthropic
         "vercel-ai-gateway/anthropic/claude-opus-4.6": { alias: "Claude Opus 4.6" },
         "vercel-ai-gateway/anthropic/claude-sonnet-4.6": { alias: "Claude Sonnet 4.6" },
@@ -608,6 +620,14 @@ export function buildGatewayConfig(
   config.models = {
     mode: "merge",
     providers: {
+      "local-provider": {
+        baseUrl: localModelUrl || "http://localhost:11434/v1",
+        apiKey: "local-no-key",
+        api: "openai-completions",
+        models: [
+          { id: localModelId, name: "Phi-3 Local", input: ["text", "image"] }
+        ],
+      },
       openai: {
         baseUrl: AI_GATEWAY_BASE_URL,
         apiKey: "sk-placeholder",
@@ -646,6 +666,7 @@ export function buildGatewayConfig(
       image: {
         enabled: true,
         models: [
+          ...(localModelUrl ? [{ provider: "local-provider", model: localModelId }] : []),
           { provider: "vercel-ai-gateway", model: "anthropic/claude-sonnet-4.6" },
           { provider: "vercel-ai-gateway", model: "openai/gpt-4o" },
         ],
